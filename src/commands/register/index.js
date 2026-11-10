@@ -14,6 +14,7 @@ const {
 } = require("discord.js");
  
 const DATA_FILE = "registrations.json";
+const COUNTER_FILE = "counter.json";
  
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
  
@@ -24,6 +25,17 @@ function loadData() {
  
 function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+}
+ 
+// Compteur global : +1 à chaque /register (ne redescend jamais)
+function nextNumber() {
+  let n = 0;
+  if (fs.existsSync(COUNTER_FILE)) {
+    n = JSON.parse(fs.readFileSync(COUNTER_FILE, "utf-8")).last || 0;
+  }
+  n += 1;
+  fs.writeFileSync(COUNTER_FILE, JSON.stringify({ last: n }), "utf-8");
+  return n;
 }
  
 const registerCommand = new SlashCommandBuilder()
@@ -68,11 +80,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
  
-  // Numéro d'inscription : on garde le même si l'équipe se réinscrit
-  const existing = data[userId];
-  const number = existing
-    ? existing.number
-    : Math.max(0, ...Object.values(data).map((e) => e.number || 0)) + 1;
+  // Le numéro change à chaque inscription (#1, #2, #3...)
+  const number = nextNumber();
  
   data[userId] = {
     number: number,
