@@ -1,6 +1,6 @@
-// Bot Discord - commande /clear (remise à zéro du salon)
-// Prérequis : Node.js 18+ et `npm install discord.js`
-// Lancer avec : node bot.js
+// Bot Discord - uniquement la commande /clear
+// Prérequis : Node.js 18+ et `npm install`
+// Lancer avec : npm start
  
 const {
   Client,
@@ -14,18 +14,27 @@ const TOKEN = process.env.DISCORD_TOKEN || 'COLLE_TON_TOKEN_ICI';
  
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
  
-const commands = [
-  new SlashCommandBuilder()
-    .setName('clear')
-    .setDescription('Remet le salon à zéro (supprime tous les messages)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
-    .setDMPermission(false)
-    .toJSON(),
-];
+const clearCommand = new SlashCommandBuilder()
+  .setName('clear')
+  .setDescription('Supprime tous les messages et remet le salon à zéro')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+  .setDMPermission(false)
+  .toJSON();
  
 client.once('ready', async () => {
-  await client.application.commands.set(commands);
-  console.log(`Connecté en tant que ${client.user.tag}`);
+  try {
+    // Remplace TOUTES les commandes globales par /clear uniquement
+    await client.application.commands.set([clearCommand]);
+ 
+    // Supprime aussi les anciennes commandes enregistrées dans chaque serveur
+    for (const guild of client.guilds.cache.values()) {
+      await guild.commands.set([]);
+    }
+ 
+    console.log(`Connecté en tant que ${client.user.tag} - seule la commande /clear est active.`);
+  } catch (err) {
+    console.error('Erreur lors de l\'enregistrement des commandes :', err);
+  }
 });
  
 client.on('interactionCreate', async (interaction) => {
@@ -53,8 +62,8 @@ client.on('interactionCreate', async (interaction) => {
   try {
     const reason = `Clear par ${interaction.user.tag}`;
  
-    // On clone le salon (mêmes permissions, nom, sujet...) puis on supprime l'ancien.
-    // Avantage : ça supprime TOUS les messages, même ceux de plus de 14 jours.
+    // Clone le salon (nom, permissions, sujet...) puis supprime l'ancien :
+    // tous les messages disparaissent, même ceux de plus de 14 jours.
     const newChannel = await channel.clone({ reason });
     await newChannel.setPosition(channel.position);
     await channel.delete(reason);
@@ -66,4 +75,5 @@ client.on('interactionCreate', async (interaction) => {
 });
  
 client.login(TOKEN);
+ 
  
